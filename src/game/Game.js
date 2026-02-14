@@ -126,23 +126,40 @@ export class Game {
 
     start() {
         this.running = true;
-        requestAnimationFrame((time) => this.gameLoop(time));
-        console.log('[Game] Started!');
+
+        // Start Logic Loop (Worker based to avoid background throttling)
+        this.worker = new Worker(new URL('./loop.worker.js', import.meta.url), { type: 'module' });
+        this.worker.onmessage = () => {
+            if (!this.running) return;
+            // Calculate accurate DT or use fixed
+            const now = performance.now();
+            const dt = now - this.lastTime;
+            this.lastTime = now;
+
+            // Cap DT to prevent huge jumps
+            const safeDt = Math.min(dt, 100);
+
+            this.update(safeDt);
+        };
+        this.lastTime = performance.now();
+        this.worker.postMessage('start');
+
+        // Start Render Loop (Standard rAF)
+        requestAnimationFrame((time) => this.renderLoop(time));
+
+        console.log('[Game] Started with Background Worker!');
     }
 
-    gameLoop(currentTime) {
+    renderLoop(time) {
         if (!this.running) return;
-
-        const deltaTime = currentTime - this.lastTime;
-
-        if (deltaTime >= this.frameTime) {
-            this.update(deltaTime);
-            this.render();
-            this.lastTime = currentTime;
-        }
-
-        requestAnimationFrame((time) => this.gameLoop(time));
+        this.render();
+        requestAnimationFrame((t) => this.renderLoop(t));
     }
+
+    // Removed old gameLoop since we split it
+    /* 
+    gameLoop(currentTime) { ... } 
+    */
 
     update(dt) {
         // Update local player
