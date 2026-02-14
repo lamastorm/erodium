@@ -1,20 +1,20 @@
 // UI Manager for displaying stats, skills, etc.
 export class UI {
-    constructor() {
-        this.statsBar = document.getElementById('statsBar');
-        this.skillsBar = document.getElementById('skillsBar');
-        this.inventory = document.getElementById('inventory');
-    }
+  constructor() {
+    this.statsBar = document.getElementById('statsBar');
+    this.skillsBar = document.getElementById('skillsBar');
+    this.inventory = document.getElementById('inventory');
+  }
 
-    update(player) {
-        this.updateStats(player);
-        this.updateSkills(player);
-    }
+  update(player) {
+    this.updateStats(player);
+    this.updateSkills(player);
+  }
 
-    updateStats(player) {
-        const { level, hp, maxHp, mp, maxMp, xp, xpToNextLevel } = player.stats;
+  updateStats(player) {
+    const { level, hp, maxHp, mp, maxMp, xp, xpToNextLevel } = player.stats;
 
-        this.statsBar.innerHTML = `
+    this.statsBar.innerHTML = `
       <div style="margin-bottom: 10px;">
         <strong>Level ${level}</strong> - ${player.currentClass.toUpperCase()}
       </div>
@@ -34,12 +34,12 @@ export class UI {
         <div class="bar-text">XP: ${Math.floor(xp)}/${xpToNextLevel}</div>
       </div>
     `;
-    }
+  }
 
-    updateSkills(player) {
-        const { melee, distance, magic, defense } = player.stats;
+  updateSkills(player) {
+    const { melee, distance, magic, defense } = player.stats;
 
-        this.skillsBar.innerHTML = `
+    this.skillsBar.innerHTML = `
       <div style="margin-bottom: 5px;"><strong>Skills</strong></div>
       
       <div class="skill-item">
@@ -62,13 +62,37 @@ export class UI {
         <span class="skill-value">${Math.floor(defense)}</span>
       </div>
     `;
+
+    // Network Status (Overlay on canvas logic should be in Game.render, but we can cheat and put a div here if we want, 
+    // OR we can just rely on the canvas rendering that I'll add to Game.js instead of UI.js DOM manipulation)
+
+    // Actually, UI.js manipulates DOM. Drawing on canvas happens in Game.js. 
+    // Let's add a DOM indicator.
+    let statusDiv = document.getElementById('networkStatus');
+    if (!statusDiv) {
+      statusDiv = document.createElement('div');
+      statusDiv.id = 'networkStatus';
+      statusDiv.style.position = 'absolute';
+      statusDiv.style.top = '10px';
+      statusDiv.style.right = '10px';
+      statusDiv.style.padding = '5px 10px';
+      statusDiv.style.borderRadius = '5px';
+      statusDiv.style.color = 'white';
+      statusDiv.style.fontSize = '12px';
+      statusDiv.style.fontFamily = 'Arial';
+      document.body.appendChild(statusDiv);
     }
 
-    showInventory() {
-        this.inventory.style.display = 'block';
-    }
+    const isConnected = this.game.network && this.game.network.connected;
+    statusDiv.style.backgroundColor = isConnected ? 'rgba(0, 200, 0, 0.5)' : 'rgba(200, 0, 0, 0.5)';
+    statusDiv.innerHTML = isConnected ? '🟢 Online' : '🔴 Offline';
+  }
 
-    hideInventory() {
-        this.inventory.style.display = 'none';
-    }
+  showInventory() {
+    this.inventory.style.display = 'block';
+  }
+
+  hideInventory() {
+    this.inventory.style.display = 'none';
+  }
 }

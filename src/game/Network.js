@@ -21,12 +21,20 @@ export class Network {
             query: { userId: this.userId }
         });
 
+        this.connected = false;
+
         this.setupListeners();
     }
 
     setupListeners() {
         this.socket.on('connect', () => {
             console.log('Connected to server with ID:', this.userId);
+            this.connected = true;
+        });
+
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            this.connected = false;
         });
 
         // Players
