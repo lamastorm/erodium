@@ -16,7 +16,7 @@ export class UI {
 
     this.statsBar.innerHTML = `
       <div style="margin-bottom: 10px;">
-        <strong>Level ${level}</strong> - ${player.currentClass.toUpperCase()}
+        <strong>Level ${level}</strong> - ${player.currentClass.toUpperCase()} <span style="font-size: 10px; color: #888;">v1.1</span>
       </div>
       
       <div class="bar">
