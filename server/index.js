@@ -75,39 +75,68 @@ for (let i = 0; i < MAX_MONSTERS; i++) {
     monsters[monster.id] = monster;
 }
 
+import jwt from 'jsonwebtoken';
+import { User } from './models/User.js';
+
+// TODO: move to .env
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_123';
+
+// Socket Middleware for Auth
+io.use(async (socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            socket.user = await User.findById(decoded.userId);
+            if (socket.user) {
+                console.log(`Authenticated user: ${socket.user.username}`);
+                return next();
+            }
+        } catch (err) {
+            console.log('Socket Auth Failed:', err.message);
+        }
+    }
+    // Allow guest connection, or reject?
+    // For now, allow guests but they won't save
+    socket.isGuest = true;
+    next();
+});
+
 io.on('connection', async (socket) => {
-    const userId = socket.handshake.query.userId || 'guest_' + socket.id;
-    console.log(`Player connected: ${socket.id} (User: ${userId})`);
+    console.log(`Socket connected: ${socket.id}`);
 
     let playerData = {
         x: 400, y: 400, class: 'knight',
         level: 1, hp: 100, maxHp: 100
     };
 
-    // Load from DB if available
-    if (isDbConnected) {
-        try {
-            let player = await PlayerModel.findOne({ username: userId });
-            if (player) {
-                playerData = {
-                    x: player.x, y: player.y, class: player.class,
-                    level: player.level, hp: player.hp, maxHp: player.maxHp
-                    // Add more stats loading here
-                };
-                console.log(`Loaded player ${userId} from DB`);
-            } else {
-                // Create new (will be saved on disconnect)
-                console.log(`New player ${userId}, will create in DB`);
-            }
-        } catch (err) {
-            console.error('Error loading player:', err);
-        }
+    // Load from User Model if authenticated
+    if (socket.user && socket.user.character) {
+        const char = socket.user.character;
+        playerData = {
+            x: char.position.x,
+            y: char.position.y,
+            class: char.class,
+            level: char.stats.level,
+            hp: char.stats.hp, // Should load current HP or reset to max?
+            maxHp: char.stats.maxHp,
+            // Allow override if corrupted
+        };
+        console.log(`Loaded character for ${socket.user.username}`);
+    }
+    // Legacy support for guests (optional)
+    else {
+        const userId = socket.handshake.query.userId || 'guest_' + socket.id;
+        // ... (Guest logic, maybe skip saving for now)
     }
 
     // Create active player instance
+    // Use user.username as public ID if auth, else socket.id or guest_id
+    const publicId = socket.user ? socket.user.username : ('Guest_' + socket.id.substr(0, 4));
+
     players[socket.id] = {
-        id: socket.id,
-        userId: userId, // Store persistent ID
+        id: socket.id, // Socket ID is still used for routing
+        userId: publicId, // Display Name
         ...playerData
     };
 
@@ -136,6 +165,7 @@ io.on('connection', async (socket) => {
 
         if (player && monster && monster.hp > 0) {
             let damage = 5;
+            // TODO: Use stats
             if (player.class === 'knight') damage = 12;
             if (player.class === 'archer') damage = 8;
             if (player.class === 'mage') damage = 15;
@@ -150,6 +180,16 @@ io.on('connection', async (socket) => {
             });
 
             if (monster.hp <= 0) {
+                // XP Logic
+                if (socket.user) {
+                    // Update server-side User state
+                    // We need to fetch and save, or keep a live reference?
+                    // Better to update memory then save on disconnect
+                    // For now, just rely on client optimism? NO.
+                    // Server needs to track XP.
+                    // Simplified: Just update `players[socket.id]` and save on disconnect.
+                }
+
                 io.emit('monsterDied', {
                     monsterId: monster.id,
                     killerId: socket.id,
@@ -169,22 +209,25 @@ io.on('connection', async (socket) => {
     socket.on('disconnect', async () => {
         console.log(`Player disconnected: ${socket.id}`);
 
-        // Save to DB
-        if (isDbConnected && players[socket.id]) {
+        // Save to User Model
+        if (socket.user && players[socket.id]) {
             const p = players[socket.id];
             try {
-                await PlayerModel.findOneAndUpdate(
-                    { username: p.userId },
-                    {
-                        x: p.x, y: p.y, class: p.class,
-                        level: p.level, hp: p.hp, maxHp: p.maxHp,
+                // Update specific fields
+                // This replaces the entire character object or use $set
+                await User.findByIdAndUpdate(socket.user._id, {
+                    $set: {
+                        'character.position.x': p.x,
+                        'character.position.y': p.y,
+                        'character.class': p.class,
+                        'character.stats.hp': p.hp,
+                        // Add XP/Level here if tracked
                         lastLogin: Date.now()
-                    },
-                    { upsert: true, new: true }
-                );
-                console.log(`Saved player ${p.userId} to DB`);
+                    }
+                });
+                console.log(`Saved character for ${socket.user.username}`);
             } catch (err) {
-                console.error('Error saving player:', err);
+                console.error('Error saving user:', err);
             }
         }
 
