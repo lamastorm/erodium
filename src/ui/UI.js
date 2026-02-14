@@ -1,0 +1,74 @@
+// UI Manager for displaying stats, skills, etc.
+export class UI {
+    constructor() {
+        this.statsBar = document.getElementById('statsBar');
+        this.skillsBar = document.getElementById('skillsBar');
+        this.inventory = document.getElementById('inventory');
+    }
+
+    update(player) {
+        this.updateStats(player);
+        this.updateSkills(player);
+    }
+
+    updateStats(player) {
+        const { level, hp, maxHp, mp, maxMp, xp, xpToNextLevel } = player.stats;
+
+        this.statsBar.innerHTML = `
+      <div style="margin-bottom: 10px;">
+        <strong>Level ${level}</strong> - ${player.currentClass.toUpperCase()}
+      </div>
+      
+      <div class="bar">
+        <div class="bar-fill hp" style="width: ${(hp / maxHp) * 100}%"></div>
+        <div class="bar-text">HP: ${Math.floor(hp)}/${maxHp}</div>
+      </div>
+      
+      <div class="bar">
+        <div class="bar-fill mp" style="width: ${(mp / maxMp) * 100}%"></div>
+        <div class="bar-text">MP: ${Math.floor(mp)}/${maxMp}</div>
+      </div>
+      
+      <div class="bar">
+        <div class="bar-fill xp" style="width: ${(xp / xpToNextLevel) * 100}%"></div>
+        <div class="bar-text">XP: ${Math.floor(xp)}/${xpToNextLevel}</div>
+      </div>
+    `;
+    }
+
+    updateSkills(player) {
+        const { melee, distance, magic, defense } = player.stats;
+
+        this.skillsBar.innerHTML = `
+      <div style="margin-bottom: 5px;"><strong>Skills</strong></div>
+      
+      <div class="skill-item">
+        <span class="skill-name">⚔️ Melee</span>
+        <span class="skill-value">${Math.floor(melee)}</span>
+      </div>
+      
+      <div class="skill-item">
+        <span class="skill-name">🏹 Distance</span>
+        <span class="skill-value">${Math.floor(distance)}</span>
+      </div>
+      
+      <div class="skill-item">
+        <span class="skill-name">🔮 Magic</span>
+        <span class="skill-value">${Math.floor(magic)}</span>
+      </div>
+      
+      <div class="skill-item" style="border-bottom: none;">
+        <span class="skill-name">🛡️ Defense</span>
+        <span class="skill-value">${Math.floor(defense)}</span>
+      </div>
+    `;
+    }
+
+    showInventory() {
+        this.inventory.style.display = 'block';
+    }
+
+    hideInventory() {
+        this.inventory.style.display = 'none';
+    }
+}
