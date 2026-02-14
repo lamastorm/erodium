@@ -3,14 +3,14 @@ import io from 'socket.io-client';
 export class Network {
     constructor(game) {
         this.game = game;
+        this.socket = null;
+        this.connected = false;
+        // userId will be set on connect
+        this.userId = null;
+    }
 
-        // Get or create persistent ID
-        let userId = localStorage.getItem('erodium_user_id');
-        if (!userId) {
-            userId = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('erodium_user_id', userId);
-        }
-        this.userId = userId;
+    connect(token, userId) {
+        this.userId = userId || 'guest_' + Math.random().toString(36).substr(2, 9);
 
         // Use relative path in production (deployed), localhost:3000 in dev
         const serverUrl = import.meta.env.PROD
@@ -18,10 +18,9 @@ export class Network {
             : 'http://localhost:3000';
 
         this.socket = io(serverUrl, {
-            query: { userId: this.userId }
+            query: { userId: this.userId },
+            auth: { token: token }
         });
-
-        this.connected = false;
 
         this.setupListeners();
     }

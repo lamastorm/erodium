@@ -124,8 +124,11 @@ export class Game {
         });
     }
 
-    start() {
+    start(userData = {}) {
         this.running = true;
+
+        // Connect to network with auth
+        this.network.connect(userData.token, userData.username);
 
         // Start Logic Loop (Worker based to avoid background throttling)
         this.worker = new Worker(new URL('./loop.worker.js', import.meta.url), { type: 'module' });
